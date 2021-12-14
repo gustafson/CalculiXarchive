@@ -1,6 +1,6 @@
 !
 !     CalculiX - A 3-dimensional finite element program
-!              Copyright (C) 1998-2018 Guido Dhondt
+!              Copyright (C) 1998-2020 Guido Dhondt
 !
 !     This program is free software; you can redistribute it and/or
 !     modify it under the terms of the GNU General Public License as
@@ -53,7 +53,7 @@
 !
       integer konl(26),ifaceq(8,6),nelemload(2,*),nbody,nelem,
      &  mi(*),jfaces,igauss,mortar,kon(*),ielprop(*),null,
-     &  mattyp,ithermal,iperturb(*),nload,idist,i,j,k,l,i1,i2,j1,
+     &  mattyp,ithermal(*),iperturb(*),nload,idist,i,j,k,l,i1,i2,j1,
      &  nmethod,k1,l1,ii,jj,ii1,jj1,id,ipointer,ig,m1,m2,m3,m4,kk,
      &  nelcon(2,*),nrhcon(*),nalcon(2,*),ielmat(mi(3),*),six,
      &  ielorien(mi(3),*),ilayer,nlayer,ki,kl,ipkon(*),indexe,
@@ -65,7 +65,7 @@
      &  istartset(*),iendset(*),ialset(*),ntie,integerglob(*),nasym,
      &  nplicon(0:ntmat_,*),nplkcon(0:ntmat_,*),npmat_,nopered,
      &  ndesi,nodedesi(*),node,kscale,iactive1,iactive2,ij1,ij2,
-     &  mass,stiffness,buckling,rhsi,coriolis,icoordinate,idir,ne,
+     &  mass,stiffness,buckling,rhsi,coriolis,icoordinate,ne,
      &  istartelem(*),ialelem(*),ieigenfrequency,idesloc1,
      &  idesloc2,idesvar1,idesvar2,ij
 !
@@ -87,26 +87,11 @@
      &  plicon(0:2*npmat_,ntmat_,*),plkcon(0:2*npmat_,ntmat_,*),
      &  xstiff(27,mi(1),*),plconloc(802),dtime,ttime,time,tvar(2),
      &  sax(60,60),ffax(60),gs(8,4),a,stress(6),stre(3,3),
-     &  pslavsurf(3,*),pmastsurf(6,*),distmin,s0(60,60),xdesi(3,*),
-     &  ds1(60,60),ff0(60),dfl2(20,20,60),dxstiff(27,mi(1),ne,*),
+     &  pslavsurf(3,*),pmastsurf(6,*),distmin,xdesi(3,*),
+     &  ds1(60,60),dfl2(20,20,60),dxstiff(27,mi(1),ne,*),
      &  vl(0:mi(2),26),v(0:mi(2),*),coef1(4),coef2(4),coef(4)
 !
-      intent(in) co,kon,lakonl,p1,p2,omx,bodyfx,nbody,
-     &  nelem,elcon,nelcon,rhcon,nrhcon,alcon,nalcon,alzero,
-     &  ielmat,ielorien,norien,orab,ntmat_,
-     &  t0,t1,ithermal,vold,iperturb,nelemload,
-     &  sideload,nload,idist,sti,stx,iexpl,plicon,
-     &  nplicon,plkcon,nplkcon,xstiff,npmat_,dtime,
-     &  matname,mi,ncmat_,mass,stiffness,buckling,rhsi,intscheme,
-     &  ttime,time,istep,iinc,coriolis,xloadold,reltime,
-     &  ipompc,nodempc,coefmpc,nmpc,ikmpc,ilmpc,veold,
-     &  nstate_,xstateini,ne0,ipkon,thicke,
-     &  integerglob,doubleglob,tieset,istartset,iendset,ialset,ntie,
-     &  nasym,pslavsurf,pmastsurf,mortar,clearini,ielprop,prop,
-     &  distmin,ndesi,nodedesi,icoordinate,xdesi,istartelem,ialelem,
-     &  v
 !
-      intent(inout) sm,xload,nmethod,springarea,xstate,dfl2
 !
       include "gauss.f"
 !
@@ -492,10 +477,10 @@ c     Bernhardi end
             if(lakonl(7:7).ne.'C') then
                t0l=0.d0
                t1l=0.d0
-               if(ithermal.eq.1) then
+               if(ithermal(1).eq.1) then
                   t0l=(t0(konl(1))+t0(konl(2)))/2.d0
                   t1l=(t1(konl(1))+t1(konl(2)))/2.d0
-               elseif(ithermal.ge.2) then
+               elseif(ithermal(1).ge.2) then
                   t0l=(t0(konl(1))+t0(konl(2)))/2.d0
                   t1l=(vold(0,konl(1))+vold(0,konl(2)))/2.d0
                endif
@@ -779,7 +764,7 @@ c         if((iperturb(1).ne.0).and.stiffness.and.(.not.buckling))
 !
          t0l=0.d0
          t1l=0.d0
-         if(ithermal.eq.1) then
+         if(ithermal(1).eq.1) then
             if(lakonl(4:5).eq.'8 ') then
                do i1=1,nope
                   t0l=t0l+t0(konl(i1))/8.d0
@@ -787,7 +772,8 @@ c         if((iperturb(1).ne.0).and.stiffness.and.(.not.buckling))
                enddo
             elseif(lakonl(4:6).eq.'20 ')then
                nopered=20
-               call lintemp(t0,t1,konl,nopered,kk,t0l,t1l)
+               call lintemp(t0,konl,nopered,kk,t0l)
+               call lintemp(t1,konl,nopered,kk,t1l)
             elseif(lakonl(4:6).eq.'10T') then
                call linscal10(t0,konl,t0l,null,shp)
                call linscal10(t1,konl,t1l,null,shp)
@@ -797,7 +783,7 @@ c         if((iperturb(1).ne.0).and.stiffness.and.(.not.buckling))
                   t1l=t1l+shp(4,i1)*t1(konl(i1))
                enddo
             endif
-         elseif(ithermal.ge.2) then
+         elseif(ithermal(1).ge.2) then
             if(lakonl(4:5).eq.'8 ') then
                do i1=1,nope
                   t0l=t0l+t0(konl(i1))/8.d0
@@ -805,7 +791,8 @@ c         if((iperturb(1).ne.0).and.stiffness.and.(.not.buckling))
                enddo
             elseif(lakonl(4:6).eq.'20 ')then
                nopered=20
-               call lintemp_th(t0,vold,konl,nopered,kk,t0l,t1l,mi)
+               call lintemp_th0(t0,konl,nopered,kk,t0l,mi)
+               call lintemp_th1(vold,konl,nopered,kk,t1l,mi)
             elseif(lakonl(4:6).eq.'10T') then
                call linscal10(t0,konl,t0l,null,shp)
                call linscal10(vold,konl,t1l,mi(2),shp)
@@ -1762,40 +1749,11 @@ c     Bernhardi end
 !     for axially symmetric and plane stress/strain elements: 
 !     complete s and sm
 !
-      if(((lakonl(4:5).eq.'8 ').or.
-     &    ((lakonl(4:6).eq.'20R').and.(lakonl(7:8).ne.'BR'))).and.
-     &   ((lakonl(7:7).eq.'A').or.(lakonl(7:7).eq.'S').or.
-     &    (lakonl(7:7).eq.'E'))) then
-         do i=1,60
-            do j=i,60
-               k=abs(iperm(i))
-               l=abs(iperm(j))
-               if(k.gt.l) then
-                  m=k
-                  k=l
-                  l=m
-               endif
-               sax(i,j)=s(k,l)*iperm(i)*iperm(j)/(k*l)
-            enddo
-         enddo
-         do i=1,60
-            do j=i,60
-               s(i,j)=s(i,j)+sax(i,j)
-            enddo
-         enddo
-!
-         if((nload.ne.0).or.(nbody.ne.0)) then
-            do i=1,60
-               k=abs(iperm(i))
-               ffax(i)=ff(k)*iperm(i)/k
-            enddo
-            do i=1,60
-               ff(i)=ff(i)+ffax(i)
-            enddo
-         endif
-!
-         if(mass.eq.1) then
-            summass=2.d0*summass
+      if(intscheme.eq.0) then
+         if(((lakonl(4:5).eq.'8 ').or.
+     &        ((lakonl(4:6).eq.'20R').and.(lakonl(7:8).ne.'BR'))).and.
+     &        ((lakonl(7:7).eq.'A').or.(lakonl(7:7).eq.'S').or.
+     &        (lakonl(7:7).eq.'E'))) then
             do i=1,60
                do j=i,60
                   k=abs(iperm(i))
@@ -1805,17 +1763,48 @@ c     Bernhardi end
                      k=l
                      l=m
                   endif
-                  sax(i,j)=sm(k,l)*iperm(i)*iperm(j)/(k*l)
+                  sax(i,j)=s(k,l)*iperm(i)*iperm(j)/(k*l)
                enddo
             enddo
             do i=1,60
                do j=i,60
-                  sm(i,j)=sm(i,j)+sax(i,j)
+                  s(i,j)=s(i,j)+sax(i,j)
                enddo
             enddo
+!     
+            if((nload.ne.0).or.(nbody.ne.0)) then
+               do i=1,60
+                  k=abs(iperm(i))
+                  ffax(i)=ff(k)*iperm(i)/k
+               enddo
+               do i=1,60
+                  ff(i)=ff(i)+ffax(i)
+               enddo
+            endif
+!     
+            if(mass.eq.1) then
+               summass=2.d0*summass
+               do i=1,60
+                  do j=i,60
+                     k=abs(iperm(i))
+                     l=abs(iperm(j))
+                     if(k.gt.l) then
+                        m=k
+                        k=l
+                        l=m
+                     endif
+                     sax(i,j)=sm(k,l)*iperm(i)*iperm(j)/(k*l)
+                  enddo
+               enddo
+               do i=1,60
+                  do j=i,60
+                     sm(i,j)=sm(i,j)+sax(i,j)
+                  enddo
+               enddo
+            endif
          endif
       endif
-!
+!     
       if((mass.eq.1).and.(iexpl.gt.1)) then
 !
 !        scaling the diagonal terms of the mass matrix such that the total mass

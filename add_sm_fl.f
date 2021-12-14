@@ -1,6 +1,6 @@
 !
 !     CalculiX - A 3-dimensional finite element program
-!              Copyright (C) 1998-2018 Guido Dhondt
+!              Copyright (C) 1998-2020 Guido Dhondt
 !
 !     This program is free software; you can redistribute it and/or
 !     modify it under the terms of the GNU General Public License as
@@ -16,34 +16,41 @@
 !     along with this program; if not, write to the Free Software
 !     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 !
-      subroutine add_sm_fl(au,ad,jq,irow,i,j,value)
+      subroutine add_sm_fl(aub,adb,jq,irow,i,j,value,
+     &  i0,i1)
 !
-!     stores the stiffness coefficient (i,j) with value "value"
-!     in the stiffness matrix stored in spare matrix format
-!     symmetric version for fluid dynamics
+!     stores the coefficient (i,j) with value "value" in the
+!     fluid matrix
 !
       implicit none
 !
-      integer jq(*),irow(*),i,j,ipointer,id
-!
-      real*8 ad(*),au(*),value
+      integer jq(*),irow(*),i,j,ii,jj,ipointer,id,i0,i1
+      real*8 adb(*),aub(*),value
 !
       if(i.eq.j) then
-         ad(i)=ad(i)+value
+         if(i0.eq.i1) then
+            adb(i)=adb(i)+value
+         else
+            adb(i)=adb(i)+2.d0*value
+         endif
          return
-      elseif(i.lt.j) then
-         return
+      elseif(i.gt.j) then
+         ii=i
+         jj=j
+      else
+         ii=j
+         jj=i
       endif
 !
-      call nident(irow(jq(j)),i,jq(j+1)-jq(j),id)
+      call nident(irow(jq(jj)),ii,jq(jj+1)-jq(jj),id)
 !
-      ipointer=jq(j)+id-1
+      ipointer=jq(jj)+id-1
 !
-      if(irow(ipointer).ne.i) then
-         write(*,*) '*ERROR in add_sm_fl: coefficient should be 0'
-         call exit(201)
+      if(irow(ipointer).ne.ii) then
+         write(*,*) '*ERROR in add_sm_ei: coefficient should be 0'
+c         write(*,*) i,j,ii,jj,ipointer,irow(ipointer)
       else
-         au(ipointer)=au(ipointer)+value
+         aub(ipointer)=aub(ipointer)+value
       endif
 !
       return
